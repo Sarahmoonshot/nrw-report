@@ -1,0 +1,53 @@
+name: Deploy on main branch push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy with Git rollback
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            set -e
+
+            APP_DIR="${{ secrets.APP_DIR }}"
+            cd "$APP_DIR"
+
+            echo "[INFO] Stashing current commit hash..."
+            PREV_COMMIT=$(git rev-parse HEAD)
+
+            echo "[INFO] Pulling latest changes..."
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "[INFO] Stopping containers..."
+            docker compose down
+
+            echo "[INFO] Attempting rebuild..."
+            if docker compose up --build -d; then
+              echo "[SUCCESS] Deployment completed."
+              exit 0
+            else
+              echo "[ERROR] Deployment failed. Rolling back to previous commit..."
+              git reset --hard "$PREV_COMMIT"
+              docker compose down
+              docker compose up -d
+              echo "[ROLLBACK] Previous version restored."
+              exit 1
+            fi
+          EOF
