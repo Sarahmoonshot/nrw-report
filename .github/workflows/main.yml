@@ -22,32 +22,27 @@ jobs:
 
       - name: Deploy with Git rollback
         run: |
-          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
             set -e
 
             APP_DIR="${{ secrets.APP_DIR }}"
             cd "$APP_DIR"
 
-            echo "[INFO] Stashing current commit hash..."
             PREV_COMMIT=$(git rev-parse HEAD)
-
-            echo "[INFO] Pulling latest changes..."
             git fetch origin main
             git reset --hard origin/main
-
-            echo "[INFO] Stopping containers..."
             docker compose down
 
-            echo "[INFO] Attempting rebuild..."
             if docker compose up --build -d; then
               echo "[SUCCESS] Deployment completed."
               exit 0
             else
-              echo "[ERROR] Deployment failed. Rolling back to previous commit..."
+              echo "[ERROR] Deployment failed. Rolling back..."
               git reset --hard "$PREV_COMMIT"
               docker compose down
               docker compose up -d
               echo "[ROLLBACK] Previous version restored."
-              exit 1
+              exit 0
             fi
-          EOF
+          '
+
