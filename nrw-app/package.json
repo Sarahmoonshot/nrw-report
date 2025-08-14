@@ -12,13 +12,15 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
-		"@lucide/svelte": "^0.539.0",
+		"@internationalized/date": "^3.8.2",
+		"@lucide/svelte": "^0.515.0",
 		"@sveltejs/adapter-auto": "^6.0.0",
 		"@sveltejs/kit": "^2.22.0",
 		"@sveltejs/vite-plugin-svelte": "^6.0.0",
 		"@tailwindcss/forms": "^0.5.9",
 		"@tailwindcss/typography": "^0.5.15",
 		"@tailwindcss/vite": "^4.0.0",
+		"bits-ui": "^2.9.3",
 		"clsx": "^2.1.1",
 		"svelte": "^5.0.0",
 		"svelte-check": "^4.0.0",
