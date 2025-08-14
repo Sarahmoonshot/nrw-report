@@ -9,7 +9,13 @@
     DropdownMenuItem,
   } from "$lib/components/ui/dropdown-menu/index"
   import { auth } from "$lib/client"
-  import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth"
+  import {
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    signInWithPopup,
+    signOut,
+    type User,
+  } from "firebase/auth"
   import { onMount } from "svelte"
 
   let user: User | null = null
@@ -41,10 +47,9 @@
 
 <div class="absolute right-5 top-5">
   <DropdownMenu>
-    <DropdownMenuTrigger>
-      <Button
-        variant="ghost"
-        class=" hover:cursor-pointer transition-shadow duration-200 ease-in-out rounded-full w-10"
+    <DropdownMenuTrigger class="rounded-full">
+      <div
+        class=" hover:cursor-pointer"
       >
         <Avatar.Root class="w-10 h-10">
           <Avatar.Image src={user?.photoURL} />
@@ -52,7 +57,7 @@
             <UserIcon />
           </Avatar.Fallback>
         </Avatar.Root>
-      </Button>
+      </div>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" class="w-40">
       {#if user}

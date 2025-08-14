@@ -51,7 +51,7 @@
   })
 </script>
 
-<Sidebar.Root>
+<Sidebar.Root class="duration-200 transition-all ease-in-out">
   <Sidebar.Content>
     <Sidebar.Group>
       <Sidebar.GroupLabel>Stations</Sidebar.GroupLabel>

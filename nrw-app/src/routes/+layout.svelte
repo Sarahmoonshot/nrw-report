@@ -10,9 +10,9 @@
 
 <Sidebar.Provider>
   <link rel="icon" href={favicon} />
-  <!-- <AppSidebar /> -->
+  <AppSidebar />
   <main class="flex overflow-x-hidden">
-    <!-- <Sidebar.Trigger class="relative left-1 top-1" /> -->
+    <Sidebar.Trigger class="relative left-1 top-1" />
     <AppAvatar />
     {@render children?.()}
   </main>

@@ -2,13 +2,36 @@
   import DataChart from "$lib/components/DataChart.svelte"
   import { useSidebar } from "$lib/components/ui/sidebar/index"
   import { derived, toStore } from "svelte/store"
+  import { PUBLIC_SERVER_ADDRESS } from "$env/static/public"
+  import { onMount } from "svelte"
   const sidebar = useSidebar()
 
-  const contentWidth = derived(
-    toStore(() => sidebar.open),
-    ($open) => ($open ? "w-[93.1rem]" : "w-screen")
-  )
+  // const contentWidth = derived(
+  //   toStore(() => sidebar.open),
+  //   ($open) => ($open ? "w-screen" : "w-screen")
+  // )
 
+  const getNRWData = async () => {
+    try {
+      const response = await fetch(
+        `${PUBLIC_SERVER_ADDRESS}/api/daily-flow?month=2025-07`
+      )
+
+      if (!response.ok) {
+        console.log("ERR status code: ", response.status)
+        console.log("Body: ", response.body)
+      }
+
+      const data = await response.json()
+      console.log({ data })
+    } catch (e) {
+      console.log(e)
+    }
+  }
+
+  onMount(() => {
+    getNRWData()
+  })
   const chartData = [
     {
       date: new Date("2025-07-14T16:00:00.000Z"),
@@ -133,9 +156,7 @@
   ]
 </script>
 
-<div
-  class={`flex flex-col items-center p-8 transition-all ${$contentWidth} w-screen duration-200 ease-in-out`}
->
+<div class={`flex flex-col items-center p-8 transition-all w-screen`}>
   <h1 class="flex mx-auto w-fit text-3xl select-none font-semibold">
     <!-- why -->
     {"Non-Revenue Water".toUpperCase()}
