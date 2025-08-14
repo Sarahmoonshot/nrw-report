@@ -1,22 +1,14 @@
 <script lang="ts">
   import {
-    Chart,
-    Layer,
-    Axis,
-    Bars,
     BarChart,
-    Tooltip,
-    LineChart,
   } from "layerchart"
-  import { bin } from "d3-array"
-  import { curveCatmullRom } from "d3-shape"
+
 
   type DataPoint = {
     value: number
     date: Date
   }
 
-  // Now $props() knows the type automatically
   const { data }: { data: DataPoint[] } = $props()
 
   const scaledData = data.map((d) => ({
