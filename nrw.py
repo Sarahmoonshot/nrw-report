@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify, g
 from datetime import datetime, timedelta
 from calendar import monthrange
-from services.flowacc import run_monthly_flow_report, run_daily_and_hourly_report  
+from services.flowacc import run_monthly_flow_report, run_daily_and_hourly_report
 from services.qty import get_billed_qty, get_percentage_complete
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base
@@ -12,19 +12,22 @@ from sqlalchemy.orm import Session
 ######### app & db Setup #########
 app = Flask(__name__)
 
-DB_HOST = '209.38.56.184'
+DB_HOST = "209.38.56.184"
 DB_PORT = 5432
-DB_NAME = 'kyogojo'
-DB_USER = 'admin'
-DB_PASSWORD = 'password'
+DB_NAME = "kyogojo"
+DB_USER = "admin"
+DB_PASSWORD = "password"
 
-engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}')
+engine = create_engine(
+    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
+
 #  ORM model for NRW report
 class NRWReport(Base):
-    __tablename__ = 'monthly_nrw'
+    __tablename__ = "monthly_nrw"
 
     id = Column(Integer, primary_key=True)
     month = Column(String, unique=True)
@@ -36,17 +39,21 @@ class NRWReport(Base):
     created_at = Column(DateTime, default=datetime.now)
     last_updated = Column(DateTime, default=datetime.now, onupdate=func.now())
 
+
 Base.metadata.create_all(engine)
+
 
 @app.before_request
 def create_session():
     g.db = SessionLocal()
 
+
 @app.teardown_request
 def remove_session(exception=None):
-    db = g.pop('db', None)
+    db = g.pop("db", None)
     if db is not None:
         db.close()
+
 
 ######### util #########
 def normalize_month_string(db_month):
@@ -56,8 +63,9 @@ def normalize_month_string(db_month):
         print(f"[DEBUG] Failed to parse DB month format: {db_month} → {e}")
         return None
 
+
 ######### NRW volume [%] monthly  #########
-@app.route('/nrw/volume-data')
+@app.route("/nrw/volume-data")
 def volume_data():
     session = g.db
     records = session.query(NRWReport).order_by(NRWReport.created_at.desc()).all()
@@ -69,10 +77,11 @@ def volume_data():
             "nrw_volume": r.nrw_m3,
             "nrw_percent": r.nrw_percent,
             "billed_qty": r.billed_qty,
-            "total_flows": r.total_flow
+            "total_flows": r.total_flow,
         }
 
     return response_data
+
 
 ######################
 @app.route("/api/daily-flow", methods=["GET"])
@@ -93,7 +102,10 @@ def daily_flow_report():
     overall_pct = get_percentage_complete(year, month)
 
     if not flow_report or billed_qty is None:
-        return jsonify({"error": "No data available to compute NRW for this month"}), 404
+        return (
+            jsonify({"error": "No data available to compute NRW for this month"}),
+            404,
+        )
 
     total_flow = flow_report.get("total_flow", 0)
     nrw_m3 = total_flow - billed_qty if total_flow and billed_qty else 0
@@ -106,11 +118,11 @@ def daily_flow_report():
         # check if any field has changed
         updated = False
         if (
-            existing.total_flow != rounded(total_flow) or
-            existing.billed_qty != rounded(billed_qty) or
-            existing.nrw_m3 != rounded(nrw_m3) or
-            existing.nrw_percent != rounded(nrw_percent) or
-            existing.overall_pct != round(overall_pct or 0)
+            existing.total_flow != rounded(total_flow)
+            or existing.billed_qty != rounded(billed_qty)
+            or existing.nrw_m3 != rounded(nrw_m3)
+            or existing.nrw_percent != rounded(nrw_percent)
+            or existing.overall_pct != round(overall_pct or 0)
         ):
             existing.total_flow = rounded(total_flow)
             existing.billed_qty = rounded(billed_qty)
@@ -138,9 +150,8 @@ def daily_flow_report():
         existing = new_record
         print(f"[DB] ✅ Inserted new NRWReport for {month_str}")
 
-    report = run_monthly_flow_report(month_str)
-    daily_flows = report.get("daily_flows", [])
-    average_daily_flow = report.get("average_daily_flow", 0)
+    daily_flows = flow_report.get("daily_flows", [])
+    average_daily_flow = flow_report.get("average_daily_flow", 0)
 
     # daily NRW breakdown
     daily_nrws = []
@@ -149,28 +160,38 @@ def daily_flow_report():
         pct_of_total = day_flow / total_flow if total_flow else 0
         est_billed = billed_qty * pct_of_total
         est_nrw = day_flow - est_billed
-        daily_nrws.append({
-            "date": day["date"],
-            "flowacc": rounded(day_flow),
-            "est_billed": rounded(est_billed),
-            "est_nrw": rounded(est_nrw),
-            "nrw_percent": round((est_nrw / day_flow) * 100, 2) if day_flow > 0 else None
-        })
+        daily_nrws.append(
+            {
+                "date": day["date"],
+                "flowacc": rounded(day_flow),
+                "est_billed": rounded(est_billed),
+                "est_nrw": rounded(est_nrw),
+                "nrw_percent": (
+                    round((est_nrw / day_flow) * 100, 2) if day_flow > 0 else None
+                ),
+            }
+        )
 
-    return jsonify({
-        "month": month_str,
-        "billed_month": month_str,
-        "total_flow": rounded(total_flow),
-        "average_daily_flow": rounded(average_daily_flow),
-        "billed_qty": rounded(billed_qty),
-        "nrw_volume": rounded(nrw_m3),
-        "nrw_percent": rounded(nrw_percent),
-        "is_estimate": False,
-        "daily_nrws": daily_nrws
-    }), 200
+    return (
+        jsonify(
+            {
+                "month": month_str,
+                "billed_month": month_str,
+                "total_flow": rounded(total_flow),
+                "average_daily_flow": rounded(average_daily_flow),
+                "billed_qty": rounded(billed_qty),
+                "nrw_volume": rounded(nrw_m3),
+                "nrw_percent": rounded(nrw_percent),
+                "is_estimate": False,
+                "daily_nrws": daily_nrws,
+            }
+        ),
+        200,
+    )
+
 
 #########################
-@app.route('/hourly')
+@app.route("/hourly")
 def hourly_nrw():
     date_str = request.args.get("date")  # format: YYYY-MM-DD
     if not date_str:
@@ -208,11 +229,18 @@ def hourly_nrw():
             billed_qty = row.billed_qty
             billed_month_str = row.month
             is_estimate = True
-            print(f"[DEBUG] Using fallback billed_qty from {billed_month_str}: {billed_qty}")
+            print(
+                f"[DEBUG] Using fallback billed_qty from {billed_month_str}: {billed_qty}"
+            )
 
     # if billing data available
     if billed_qty is None or billed_qty == 0.0:
-        return jsonify({"error": "No billing data available for current or previous month"}), 404
+        return (
+            jsonify(
+                {"error": "No billing data available for current or previous month"}
+            ),
+            404,
+        )
 
     # estimate billed per day/hour
     num_days_in_month = monthrange(target_date.year, target_date.month)[1]
@@ -229,27 +257,32 @@ def hourly_nrw():
         flow = entry["flow"]
         nrw = flow - billed_per_hour
         percent = (nrw / flow * 100) if flow else 0
-        hourly_estimates.append({
-            "hour": entry["hour"],
-            "flow": round(flow, 2),
-            "billed_est": round(billed_per_hour, 2),
-            "nrw_percent": round(percent, 2)
-        })
+        hourly_estimates.append(
+            {
+                "hour": entry["hour"],
+                "flow": round(flow, 2),
+                "billed_est": round(billed_per_hour, 2),
+                "nrw_percent": round(percent, 2),
+            }
+        )
 
-    return jsonify({
-        "status": "ok",
-        "source": f"flowAcc - billed_qty from {billed_month_str}",
-        "is_estimate": is_estimate,
-        "billed_month": billed_month_str,
-        "billed_qty": round(billed_qty, 2),
-        "daily": {
-            "flowAcc": round(daily_flow, 2),
-            "billed_est": round(billed_per_day, 2),
-            "nrw_volume": round(nrw_volume, 2),
-            "nrw_percent": round(nrw_percent, 2)
-        },
-        "hourly": hourly_estimates
-    })
+    return jsonify(
+        {
+            "status": "ok",
+            "source": f"flowAcc - billed_qty from {billed_month_str}",
+            "is_estimate": is_estimate,
+            "billed_month": billed_month_str,
+            "billed_qty": round(billed_qty, 2),
+            "daily": {
+                "flowAcc": round(daily_flow, 2),
+                "billed_est": round(billed_per_day, 2),
+                "nrw_volume": round(nrw_volume, 2),
+                "nrw_percent": round(nrw_percent, 2),
+            },
+            "hourly": hourly_estimates,
+        }
+    )
+
 
 if __name__ == "__main__":
     app.run(debug=True)
