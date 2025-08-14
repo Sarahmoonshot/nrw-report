@@ -1,4 +1,6 @@
 <script>
+  import Button from "$lib/components/ui/button/button.svelte"
+
   let count = $state(0)
 
   const increment = () => {
@@ -6,9 +8,8 @@
   }
 </script>
 
-<button
-  onclick={increment}
-  class={"bg-amber-200 p-1 px-3 hover:bg-amber-300 rounded-md"}
+<Button
+  onclick={increment} variant="secondary"
 >
   {count}
-</button>
+</Button>
