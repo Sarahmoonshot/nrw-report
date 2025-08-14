@@ -1,8 +1,8 @@
 @import "tailwindcss";
-
+@source '../node_modules/layerchart/dist';
 @import "tw-animate-css";
-
 @custom-variant dark (&:is(.dark *));
+@config "../tailwind.config.js";
 
 :root {
   --radius: 0.625rem;
@@ -46,7 +46,7 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.92 0.004 286.32);
+  --primary: oklch(91.973% 0.00413 285.946);
   --primary-foreground: oklch(0.21 0.006 285.885);
   --secondary: oklch(0.274 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
