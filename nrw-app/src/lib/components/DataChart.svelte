@@ -1,8 +1,5 @@
 <script lang="ts">
-  import {
-    BarChart,
-  } from "layerchart"
-
+  import { BarChart } from "layerchart"
 
   type DataPoint = {
     value: number
@@ -17,7 +14,7 @@
   }))
 </script>
 
-<div class="h-[300px] m-8 w-full border rounded-sm p-2">
+<div class=" m-8 mt-[10rem] w-full h-[30rem] border rounded-sm p-2">
   <BarChart
     data={scaledData}
     x="date"
