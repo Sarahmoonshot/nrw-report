@@ -1,16 +1,29 @@
 <script lang="ts">
   import { BarChart } from "layerchart"
 
-  type DataPoint = {
-    value: number
-    date: Date
+  type data = {
+    average_daily_flow: number
+    billed_month: string
+    billed_qty: number
+    daily_nrws: {
+      date: String
+      est_billed: number
+      est_nrw: number
+      flowacc: number
+      nrw_percent: number
+    }
+    is_estimate: boolean
+    month: string
+    nrw_percent: number
+    nrw_volume: number
+    total_flow: number
   }
 
-  const { data }: { data: DataPoint[] } = $props()
+  const { data }: { data: data[] } = $props()
 
   const scaledData = data.map((d) => ({
     ...d,
-    value: d.value / 100,
+    value: d.nrw_percent / 100,
   }))
 </script>
 
