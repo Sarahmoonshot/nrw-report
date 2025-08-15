@@ -38,7 +38,7 @@
 
       if (!response.ok) {
         console.log("ERR status code: ", response.status)
-        console.log("Body: ", response.body)
+        return
       }
 
       const data = await response.json()
