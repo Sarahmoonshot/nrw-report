@@ -1,0 +1,229 @@
+{
+  "average_daily_flow": 4463.44,
+  "billed_month": "2025-07",
+  "billed_qty": 67944,
+  "daily_nrws": [
+    {
+      "date": "2025-07-01",
+      "est_billed": 2026.48,
+      "est_nrw": 2233.52,
+      "flowacc": 4260,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-02",
+      "est_billed": 2240.06,
+      "est_nrw": 2468.94,
+      "flowacc": 4709,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-03",
+      "est_billed": 2170.61,
+      "est_nrw": 2392.39,
+      "flowacc": 4563,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-04",
+      "est_billed": 2157.29,
+      "est_nrw": 2377.71,
+      "flowacc": 4535,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-05",
+      "est_billed": 1778.16,
+      "est_nrw": 1959.84,
+      "flowacc": 3738,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-06",
+      "est_billed": 2125.42,
+      "est_nrw": 2342.58,
+      "flowacc": 4468,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-07",
+      "est_billed": 2343.77,
+      "est_nrw": 2583.23,
+      "flowacc": 4927,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-08",
+      "est_billed": 2474.58,
+      "est_nrw": 2727.42,
+      "flowacc": 5202,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-09",
+      "est_billed": 2376.11,
+      "est_nrw": 2618.89,
+      "flowacc": 4995,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-10",
+      "est_billed": 2429.87,
+      "est_nrw": 2678.13,
+      "flowacc": 5108,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-11",
+      "est_billed": 2501.7,
+      "est_nrw": 2757.3,
+      "flowacc": 5259,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-12",
+      "est_billed": 1882.34,
+      "est_nrw": 2074.66,
+      "flowacc": 3957,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-13",
+      "est_billed": 2024.57,
+      "est_nrw": 2231.43,
+      "flowacc": 4256,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-14",
+      "est_billed": 2146.83,
+      "est_nrw": 2366.17,
+      "flowacc": 4513,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-15",
+      "est_billed": 2164.9,
+      "est_nrw": 2386.1,
+      "flowacc": 4551,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-16",
+      "est_billed": 2140.64,
+      "est_nrw": 2359.36,
+      "flowacc": 4500,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-17",
+      "est_billed": 2105.92,
+      "est_nrw": 2321.08,
+      "flowacc": 4427,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-18",
+      "est_billed": 2097.35,
+      "est_nrw": 2311.65,
+      "flowacc": 4409,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-19",
+      "est_billed": 2080.7,
+      "est_nrw": 2293.3,
+      "flowacc": 4374,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-20",
+      "est_billed": 2125.42,
+      "est_nrw": 2342.58,
+      "flowacc": 4468,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-21",
+      "est_billed": 2106.39,
+      "est_nrw": 2321.61,
+      "flowacc": 4428,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-22",
+      "est_billed": 2156.82,
+      "est_nrw": 2377.18,
+      "flowacc": 4534,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-23",
+      "est_billed": 2150.63,
+      "est_nrw": 2370.37,
+      "flowacc": 4521,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-24",
+      "est_billed": 2134.93,
+      "est_nrw": 2353.07,
+      "flowacc": 4488,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-25",
+      "est_billed": 2144.92,
+      "est_nrw": 2364.08,
+      "flowacc": 4509,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-26",
+      "est_billed": 2147.78,
+      "est_nrw": 2367.22,
+      "flowacc": 4515,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-27",
+      "est_billed": 2126.85,
+      "est_nrw": 2344.15,
+      "flowacc": 4471,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-28",
+      "est_billed": 2119.24,
+      "est_nrw": 2335.76,
+      "flowacc": 4455,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-29",
+      "est_billed": 2082.61,
+      "est_nrw": 2295.39,
+      "flowacc": 4378,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-30",
+      "est_billed": 1676.84,
+      "est_nrw": 1848.16,
+      "flowacc": 3525,
+      "nrw_percent": 52.43
+    },
+    {
+      "date": "2025-07-31",
+      "est_billed": 1549.83,
+      "est_nrw": 1708.17,
+      "flowacc": 3258,
+      "nrw_percent": 52.43
+    }
+  ],
+  "is_estimate": false,
+  "month": "2025-07",
+  "nrw_percent": 52.43,
+  "nrw_volume": 74886,
+  "total_flow": 142830
+}

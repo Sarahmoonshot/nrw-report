@@ -24,7 +24,6 @@
       }))
     })
   }
-  $inspect(items)
   // Listen to auth changes
   onMount(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {

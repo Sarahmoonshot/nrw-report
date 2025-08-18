@@ -1,63 +1,108 @@
 <script lang="ts">
-  import DataChart from "$lib/components/DataChart.svelte"
-  import { useSidebar } from "$lib/components/ui/sidebar/index"
-  import { derived, toStore } from "svelte/store"
   import { PUBLIC_SERVER_ADDRESS } from "$env/static/public"
+  import ComparisonChart from "$lib/components/ComparisonChart.svelte"
+  import MonthlyChart from "$lib/components/MonthlyChart.svelte"
   import { onMount } from "svelte"
-  // const sidebar = useSidebar()
 
-  // const contentWidth = derived(
-  //   toStore(() => sidebar.open),
-  //   ($open) => ($open ? "w-screen" : "w-screen")
-  // )
+  let chartData: data | null = $state(null)
+  let monthlyData: YearlyNRWData | null = $state(null)
+  let loading = $state(false)
+  let error: string | null = $state(null)
 
-  type data = {
-    average_daily_flow: number
-    billed_month: string
-    billed_qty: number
-    daily_nrws: {
-      date: String
-      est_billed: number
-      est_nrw: number
-      flowacc: number
-      nrw_percent: number
-    }
-    is_estimate: boolean
-    month: string
-    nrw_percent: number
-    nrw_volume: number
-    total_flow: number
-  }
+  async function getNRWData() {
+    loading = true
+    error = null
+    chartData = null
 
-  let chartData: data[] = $state([])
-  const getNRWData = async () => {
     try {
       const response = await fetch(
-        `${PUBLIC_SERVER_ADDRESS}/api/daily-flow?month=2025-07`
+        `${PUBLIC_SERVER_ADDRESS}/api/daily-flow?month=2025-07`,
+        {
+          cache: "no-cache",
+        }
       )
 
       if (!response.ok) {
-        console.log("ERR status code: ", response.status)
+        error = `Request failed with status ${response.status}`
         return
       }
 
-      const data = await response.json()
-      chartData = data
-      console.log({ data })
+      const json = await response.json()
+      chartData = json
     } catch (e) {
-      console.log(e)
+      error = e instanceof Error ? e.message : "Unknown error"
+    } finally {
+      loading = false
     }
   }
 
+  async function getMonthlyData() {
+    loading = true
+    error = null
+    chartData = null
+
+    try {
+      const response = await fetch(`${PUBLIC_SERVER_ADDRESS}/nrw/volume-data`, {
+        cache: "no-cache",
+      })
+
+      if (!response.ok) {
+        error = `Request failed with status ${response.status}`
+        return
+      }
+
+      const json = await response.json()
+      monthlyData = json
+    } catch (e) {
+      error = e instanceof Error ? e.message : "Unknown error"
+    } finally {
+      loading = false
+    }
+  }
+  function retry() {
+    getNRWData()
+    getMonthlyData()
+  }
+
+  $inspect(chartData)
+  $inspect(monthlyData)
   onMount(() => {
     getNRWData()
+    getMonthlyData()
   })
 </script>
 
-<div class={`flex flex-col items-center p-8 transition-all w-screen`}>
+<div class="flex flex-col items-center p-8 transition-all w-screen">
   <h1 class="flex mx-auto w-fit text-3xl select-none font-semibold">
-    <!-- why -->
     {"Non-Revenue Water".toUpperCase()}
   </h1>
-  <DataChart data={chartData} />
+
+  {#if loading}
+    <div
+      class="w-[80rem] h-[40rem] bg-zinc-200 rounded-md mt-10 flex animate-pulse justify-center items-center"
+    >
+      Loading NRW data...
+    </div>
+  {:else if error}
+    <div
+      class="w-[80rem] h-[40rem] bg-red-100 border border-red-400 rounded-md mt-10 flex flex-col justify-center items-center gap-4"
+    >
+      <p class="text-red-600 font-semibold">Error: {error}</p>
+      <button
+        class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
+        onclick={retry}
+      >
+        Retry
+      </button>
+    </div>
+  {:else}
+    <div class="flex gap-2 p-4 flex-col w-[80rem]">
+      {#if chartData}
+        <ComparisonChart data={chartData} />
+      {/if}
+      {#if monthlyData}
+        <MonthlyChart data={monthlyData} />
+      {/if}
+    </div>
+  {/if}
 </div>
