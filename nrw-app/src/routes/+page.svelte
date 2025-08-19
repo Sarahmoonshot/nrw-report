@@ -85,36 +85,7 @@
 </script>
 
 <div class="flex flex-col items-center p-8 transition-all w-screen">
-  <h1 class="flex mx-auto w-fit text-3xl select-none font-semibold">
-    {"Non-Revenue Water".toUpperCase()}
+  <h1 class="flex mx-auto w-fit my-auto text-3xl select-none font-semibold">
+    {"Select a station".toUpperCase()}
   </h1>
-
-  {#if loading}
-    <div
-      class="w-[80rem] h-[40rem] bg-zinc-200 rounded-md mt-10 flex animate-pulse justify-center items-center"
-    >
-      Loading NRW data...
-    </div>
-  {:else if error}
-    <div
-      class="w-[80rem] h-[40rem] bg-red-100 border border-red-400 rounded-md mt-10 flex flex-col justify-center items-center gap-4"
-    >
-      <p class="text-red-600 font-semibold">Error: {error}</p>
-      <button
-        class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md"
-        onclick={retry}
-      >
-        Retry
-      </button>
-    </div>
-  {:else}
-    <div class="flex gap-2 p-4 flex-col w-[80rem]">
-      {#if chartData}
-        <ComparisonChart data={chartData} />
-      {/if}
-      {#if monthlyData}
-        <MonthlyChart data={monthlyData} />
-      {/if}
-    </div>
-  {/if}
 </div>
