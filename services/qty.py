@@ -1,9 +1,10 @@
 import time
 import requests
 from datetime import datetime
+from collections import defaultdict
 
 # -----------------------------
-# token chaching
+# token caching
 cached_token = None
 token_expiry = 0
 
@@ -57,27 +58,59 @@ def get_location_periods(year_month):
 def get_billed_qty(year, month):
     year_month = f"{year}-{month:02d}"
     all_data = get_location_periods(year_month)
-    filtered_data = [row for row in all_data if row.get("projectName") == "LIBONA WTP"]
-    total_qty = sum(float(row.get("qtyM3", 0)) for row in filtered_data if row.get("qtyM3") is not None)
+    total_qty = sum(float(row.get("qtyM3", 0)) for row in all_data if row.get("qtyM3") is not None)
     return total_qty
 
-def get_percentage_complete(year, month):
+def get_billed_qty_by_project(year, month):
+    """Get billed quantities grouped by project/area"""
     year_month = f"{year}-{month:02d}"
     all_data = get_location_periods(year_month)
-    filtered_data = [row for row in all_data if row.get("projectName") == "LIBONA WTP"]
+    
+    project_data = defaultdict(lambda: {
+        "total_qty": 0.0,
+        "active_customers": 0,
+        "percentage_complete": 0.0,
+        "locations": []
+    })
+    
+    for row in all_data:
+        project = row.get("projectName", "Unknown Project")
+        qty = float(row.get("qtyM3", 0) or 0)
+        customers = int(row.get("activeCustomers", 0) or 0)
+        loc_pctcomplete = float(row.get("percentageComplete", 0) or 0)
+        location = row.get("location", "Unknown")
+        
+        project_data[project]["total_qty"] += qty
+        project_data[project]["active_customers"] += customers
+        project_data[project]["locations"].append({
+            "location": location,
+            "qty": qty,
+            "customers": customers,
+            "loc_pctcomplete": loc_pctcomplete
+        })
+    
+    # Calculate weighted percentage complete for each project
+    for project, data in project_data.items():
+        if data["active_customers"] > 0:
+            weighted_pct = sum(
+                loc["customers"] * loc["loc_pctcomplete"] 
+                for loc in data["locations"]
+            ) / data["active_customers"]
+            data["percentage_complete"] = weighted_pct
+    
+    return dict(project_data)
 
-    total_customers = sum(int(row.get("activeCustomers", 0)) for row in filtered_data)
-    weighted_total = sum(
-        int(row.get("activeCustomers", 0)) * float(row.get("percentageComplete", 0))
-        for row in filtered_data
-    )
-    if total_customers == 0:
-        return 0.0
+def get_overallpercentage_complete(year, month):
+    data = get_location_periods(f"{year}-{month:02d}")
+    total = sum(int(d.get("activeCustomers", 0)) for d in data)
+    return round(sum(int(d.get("activeCustomers", 0)) * float(d.get("percentageComplete", 0)) for d in data) / total, 2) if total else 0.0
 
-    overall_percentage = weighted_total / total_customers
-    return overall_percentage
+def calculate_WTP_billing_completion(records):
+    total = sum(int(r.get("activeCustomers", 0)) for r in records)
+    return sum(int(r.get("activeCustomers", 0)) * float(r.get("percentageComplete", 0)) for r in records) / total if total else 0.0
 
 # -----------------------------
+"""
 def main():
     # auto compute prev month
     today = datetime.today()
@@ -89,23 +122,40 @@ def main():
         month = today.month - 1
 
     year_month = f"{year}-{month:02d}"
-    print(f"\n Displaying Libona WTP qtyM3 for: {year_month}")
+    print(f"\n📊 Displaying ALL PROJECTS qtyM3 for: {year_month}\n")
 
     all_data = get_location_periods(year_month)
-    filtered_data = [row for row in all_data if row.get("projectName") == "LIBONA WTP"]
 
-    total_qty = sum(float(row.get("qtyM3", 0)) for row in filtered_data if row.get("qtyM3") is not None)
+    # group totals by project
+    project_totals = defaultdict(float)
+    project_records = defaultdict(list)
 
-    print(f"\n📍 Project: LIBONA WTP")
-    print(f"Product Total Flow (qtyM3): {total_qty:.2f}")
-    print("\n Records:")
-    for row in filtered_data:
-        location = row.get("location", "Unknown")
-        qty = row.get("qtyM3", "N/A")
-        print(f"- Location: {location}, Qty: {qty} m³")
+    for row in all_data:
+        project = row.get("projectName", "Unknown Project")
+        qty = float(row.get("qtyM3", 0) or 0)
+        project_totals[project] += qty
+        project_records[project].append(row)
 
-    overall_pct = get_percentage_complete(year, month)
-    print(f"Overall Bill Complete (%): {overall_pct:.0f}%")
-
+    # display per project totals with completion percentage
+    for project, total in project_totals.items():
+        # Calculate project completion percentage
+        project_completion = calculate_WTP_billing_completion(project_records[project])
+        
+        print(f"📍 Project: {project}")
+        print(f"   Product Total Flow (qtyM3): {total:.2f}")
+        print(f"   Billed Completed (%): {project_completion:.2f}%")
+        print("   Records:")
+        
+        for row in project_records[project]:
+            location = row.get("location", "Unknown")
+            qty = row.get("qtyM3", "N/A")
+            location_pct = float(row.get("percentageComplete", 0) or 0)
+            print(f"   - Location: {location}, Qty: {qty} m³, Billed Complete %: {location_pct:.1f}%")
+        
+        print("-" * 50)
+        
+    overall_pct = get_overallpercentage_complete(year, month)
+    print(f"Overall Bill Complete (%): {overall_pct:.1f}%")
+"""
 if __name__ == "__main__":
     main()

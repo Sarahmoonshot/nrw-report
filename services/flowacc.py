@@ -1,170 +1,97 @@
 import requests
-from datetime import datetime, timezone, timedelta
-from calendar import monthrange
+from datetime import datetime
 
-API_BASE_URL = "https://neptune.kyogojo.com/api/statistics/get-multiple?stations=LBNA-001&days="
+API_URL = "https://neptune.kyogojo.com/api/v4/statistics/get-flow-moving-average"
+DEVICE_CODES = {
+    "libona": "40961",
+    "cotabato": "3993042952", 
+    "dansolihon": "3993042948",
+    "taguanao": "3993042954",
+    "camarines_sur_1": "3993042950",
+    "camarines_sur_2": "3993042951"
+}
 
-def to_unix_ms(dt_obj):
-    return int(dt_obj.replace(tzinfo=timezone.utc).timestamp() * 1000)
+def fetch_device_data(device, year=None, month=None):
+    """Fetch last30Days data for a given device and month/year"""
+    year, month = year or datetime.today().year, month or datetime.today().month
+    date_str = f"{month:02d}-01-{year}"
+    url = f"{API_URL}?device={DEVICE_CODES[device]}&date={date_str}"
+    print(f"[LOG] Fetching: {url}")
 
-def fetch_batched_flowacc(unix_days, batch_size=30):
-    data = []
-    for i in range(0, len(unix_days), batch_size):
-        batch = unix_days[i:i + batch_size]
-        days_str = ",".join(str(day) for day in batch)
-        try:
-            print(f"[LOG] Fetching: {API_BASE_URL}{days_str}")
-            response = requests.get(f"{API_BASE_URL}{days_str}")
-            response.raise_for_status()
-            payload = response.json().get("payload", {}).get("data", [])
-            if payload and "flowAcc" in payload[0]:
-                data.extend(payload[0]["flowAcc"])
-        except Exception as err:
-            print(f"[ERROR] Batch failed: {err}")
-    return data
-
-def generate_daily_flows(flow_data, tz_offset=8):
-    grouped = {}
-    for item in flow_data:
-        utc_date = datetime.fromtimestamp(item["time"] / 1000).strftime("%Y-%m-%d")
-        grouped.setdefault(utc_date, []).append(item)
-
-    final_vals = {
-        date: max(entries, key=lambda x: x["time"])["value"]
-        for date, entries in grouped.items()
-    }
-
-    dates = sorted(final_vals.keys())
-    return [
-        {
-            "date": dates[i],
-            "flow": final_vals[dates[i]] - final_vals[dates[i - 1]]
-        }
-        for i in range(1, len(dates))
-        if isinstance(final_vals[dates[i]], (int, float)) and isinstance(final_vals[dates[i - 1]], (int, float))
-    ]
-
-def run_monthly_flow_report(month_str):
     try:
-        year, month = map(int, month_str.split("-"))
-        start_date = datetime(year, month, 1).date()
-    except:
-        print(" Invalid format. Use YYYY-MM.")
-        return None
+        res = requests.get(url)
+        res.raise_for_status()
+        return res.json().get("payload", {}).get("last30Days", [])
+    except Exception as e:
+        print(f"[ERROR] {e}")
+        return []
 
-    last_day = monthrange(year, month)[1]
-    fetch_dates = [start_date - timedelta(days=1) + timedelta(days=i) for i in range(last_day + 1)]
-    unix_days = [to_unix_ms(datetime.combine(d, datetime.min.time())) for d in fetch_dates]
+def calculate_total_flow(data):
+    """Sum valid flows and count days"""
+    valid = [x for x in data if x is not None]
+    return sum(valid), len(valid)
 
-    flow_data = fetch_batched_flowacc(unix_days)
-    daily_flows = generate_daily_flows(flow_data)
+def run_flow_report(device, year=None, month=None):
+    """Show single device report"""
+    data = fetch_device_data(device, year, month)
+    total, days = calculate_total_flow(data)
+    print(f"\n📊 {device.upper()} | Total: {total:.2f} m³ | Valid: {days}")
+    display_last30days(device, data)
+    return {"device": device, "year": year, "month": month, "total_flow": total, "valid_days": days, "last30days": data}
 
-    total = sum(d["flow"] for d in daily_flows)
-    avg = total / len(daily_flows) if daily_flows else 0
+def fetch_all_reports(year=None, month=None):
+    """Show reports for all devices"""
+    reports = {}
+    for device in DEVICE_CODES:
+        reports[device] = run_flow_report(device, year, month)
+    return reports
 
-    print("\n📅 Monthly Flow Report")
-    print(f"Month: {month_str}")
-    print(f"Total: {round(total, 2)} m³")
-    print(f" Avg Daily: {round(avg, 2)} m³")
-    print("Date\t\tFlow (m³)")
-    print("-" * 30)
-    for d in daily_flows:
-        print(f"{d['date']}\t{round(d['flow'], 2)}")
+def display_last30days(device, data):
+    """Print last30Days array"""
+    formatted = [("null" if x is None else f"{x}") for x in data]
+    print(f"Last30Days for {device.upper()}: [{','.join(formatted)}]")
 
-    return {
-        "total_flow": total,
-        "average_daily_flow": avg,
-        "daily_flows": daily_flows
-    }
-
-def run_daily_and_hourly_report(date_str=None):
-    tz_offset = 8
-    if date_str:
-        try:
-            target_date = datetime.strptime(date_str, "%Y-%m-%d").date()
-        except:
-            print(" Invalid format. Use YYYY-MM-DD.")
-            return
-    else:
-        target_date = (datetime.now(timezone.utc) + timedelta(hours=tz_offset)).date()
-
-    # Daily
-    fetch_days = [target_date - timedelta(days=1), target_date]
-    unix_days = [to_unix_ms(datetime.combine(d, datetime.min.time())) for d in fetch_days]
-    flow_data = fetch_batched_flowacc(unix_days)
-    daily = generate_daily_flows(flow_data)
-    print("\n📅 Daily Flow Report")
-    print(f"Date: {target_date}")
-    if daily:
-        print(f" FlowAcc: {daily[0]['flow']} m³")
-    else:
-        print(" Insufficient data.")
-
-    # Hourly
-    hourly_timestamps = [
-        datetime(target_date.year, target_date.month, target_date.day, h)
-        for h in range(24)
-    ]
-    unix_hours = [to_unix_ms(t) for t in hourly_timestamps]
-    flow_hourly_data = fetch_batched_flowacc(unix_hours)
-
-    hourly_vals = {}
-    for row in flow_hourly_data:
-        local_hour = datetime.fromtimestamp(row["time"] / 1000).strftime("%Y-%m-%d %H:00")
-        hourly_vals.setdefault(local_hour, []).append(row)
-
-    hourly_final = {
-        hour: max(v, key=lambda x: x["time"])["value"]
-        for hour, v in hourly_vals.items()
-    }
-    sorted_hours = sorted(hourly_final.keys())
-    hourly_flows = [
-        {
-            "hour": sorted_hours[i],
-            "flow": hourly_final[sorted_hours[i]] - hourly_final[sorted_hours[i - 1]]
-        }
-        for i in range(1, len(sorted_hours))
-        if isinstance(hourly_final[sorted_hours[i]], (int, float)) and isinstance(hourly_final[sorted_hours[i - 1]], (int, float))
-    ]
-
-    total_hourly = sum(d["flow"] for d in hourly_flows)
-    avg_hourly = total_hourly / len(hourly_flows) if hourly_flows else 0
-
-    print("\n Hourly Flow Report")
-    print(f"Avg Hourly: {round(avg_hourly, 2)} m³")
-    print("Hour\t\tFlow (m³)")
-    print("-" * 30)
-    for d in hourly_flows:
-        print(f"{d['hour']}\t{round(d['flow'], 2)}")
-
-    return {
-        "daily": {
-            "date": str(target_date),
-            "flow": daily[0]["flow"] if daily else 0
-        },
-        "hourly": {
-            "hourly_flows": hourly_flows,
-            "avg_hourly": avg_hourly,
-            "total_hourly": total_hourly
-        }
-    }
-
+"""
 def main():
     print("\n🌊 FLOW REPORT GENERATOR")
     print("Select one of the following:")
-    print("1. Monthly Report")
-    print("2. Daily & Hourly Report")
+    print("1. Single Device Report")
+    print("2. All Devices Summary")
 
     choice = input("Enter choice (1 or 2): ").strip()
 
+    # Ask user for year/month
+    year = input("Enter year (e.g., 2025): ").strip()
+    month = input("Enter month (1-12): ").strip()
+    try:
+        year = int(year)
+        month = int(month)
+    except ValueError:
+        print("[ERROR] Invalid year/month, defaulting to current month")
+        from datetime import datetime
+        today = datetime.today()
+        year, month = today.year, today.month
+
     if choice == "1":
-        month_input = input("📅 Enter month (YYYY-MM): ").strip()
-        run_monthly_flow_report(month_input)
+        device_input = input(f"🔧 Enter device ({', '.join(DEVICE_CODES.keys())}): ").strip().lower()
+        if not device_input:
+            device_input = "libona"
+        run_flow_report(device_input, year, month)
+
     elif choice == "2":
-        date_input = input("📆 Enter date (YYYY-MM-DD): ").strip()
-        run_daily_and_hourly_report(date_input)
+        print(f"\n📊 Fetching data for all devices ({month:02d}-{year})...")
+        all_data = fetch_all_reports(year, month)
+        print("\n" + "=" * 50)
+        print(f"📊 ALL DEVICES SUMMARY ({month:02d}-{year})")
+        print("=" * 50)
+        for device_name, stats in all_data.items():
+            print(f"{device_name.upper():15} | Total: {stats['total_flow']:8.2f} m³ | Valid: {stats['valid_days']}")
+            display_last30days(device_name, stats['last30days'])
+            print("-" * 50)
+
     else:
-        print(" Invalid selection. Please enter 1 or 2.")
+        print("Invalid selection. Please enter 1 or 2.")
+"""
 
 if __name__ == "__main__":
     main()
