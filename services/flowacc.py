@@ -12,10 +12,13 @@ DEVICE_CODES = {
 }
 
 def fetch_device_data(device, year=None, month=None):
-    """Fetch last30Days data for a given device and month/year"""
+    """
+    Fetch last30Days data for a given device code and month/year
+    """
     year, month = year or datetime.today().year, month or datetime.today().month
     date_str = f"{month:02d}-01-{year}"
-    url = f"{API_URL}?device={DEVICE_CODES[device]}&date={date_str}"
+
+    url = f"{API_URL}?device={device}&date={date_str}"
     print(f"[LOG] Fetching: {url}")
 
     try:
@@ -32,66 +35,58 @@ def calculate_total_flow(data):
     return sum(valid), len(valid)
 
 def run_flow_report(device, year=None, month=None):
-    """Show single device report"""
+    """
+    Show single device report
+    """
     data = fetch_device_data(device, year, month)
     total, days = calculate_total_flow(data)
     print(f"\n📊 {device.upper()} | Total: {total:.2f} m³ | Valid: {days}")
     display_last30days(device, data)
     return {"device": device, "year": year, "month": month, "total_flow": total, "valid_days": days, "last30days": data}
 
-def fetch_all_reports(year=None, month=None):
-    """Show reports for all devices"""
-    reports = {}
-    for device in DEVICE_CODES:
-        reports[device] = run_flow_report(device, year, month)
-    return reports
 
 def display_last30days(device, data):
-    """Print last30Days array"""
+    """
+    Print last30Days array
+    """
     formatted = [("null" if x is None else f"{x}") for x in data]
     print(f"Last30Days for {device.upper()}: [{','.join(formatted)}]")
 
-"""
-def main():
-    print("\n🌊 FLOW REPORT GENERATOR")
-    print("Select one of the following:")
-    print("1. Single Device Report")
-    print("2. All Devices Summary")
+def run_yearly_flow_report(device, year=None, verbose=True):
+    """
+    Collect flow report for all months in a given year for a specific device.
+    """
+    year = year or datetime.today().year
+    yearly_total = 0.0
+    yearly_valid_days = 0
+    results = {}
 
-    choice = input("Enter choice (1 or 2): ").strip()
+    for month in range(1, 13):
+        data = fetch_device_data(device, year, month)
+        total, days = calculate_total_flow(data)
 
-    # Ask user for year/month
-    year = input("Enter year (e.g., 2025): ").strip()
-    month = input("Enter month (1-12): ").strip()
-    try:
-        year = int(year)
-        month = int(month)
-    except ValueError:
-        print("[ERROR] Invalid year/month, defaulting to current month")
-        from datetime import datetime
-        today = datetime.today()
-        year, month = today.year, today.month
+        if verbose:
+            print(f"\n📊 {device.upper()} | {year}-{month:02d} | Total: {total:.2f} m³ | Valid: {days}")
+            display_last30days(device, data)
 
-    if choice == "1":
-        device_input = input(f"🔧 Enter device ({', '.join(DEVICE_CODES.keys())}): ").strip().lower()
-        if not device_input:
-            device_input = "libona"
-        run_flow_report(device_input, year, month)
+        results[f"{year}-{month:02d}"] = {
+            "total_flow": total,
+            "valid_days": days,
+            "last30days": data
+        }
 
-    elif choice == "2":
-        print(f"\n📊 Fetching data for all devices ({month:02d}-{year})...")
-        all_data = fetch_all_reports(year, month)
-        print("\n" + "=" * 50)
-        print(f"📊 ALL DEVICES SUMMARY ({month:02d}-{year})")
-        print("=" * 50)
-        for device_name, stats in all_data.items():
-            print(f"{device_name.upper():15} | Total: {stats['total_flow']:8.2f} m³ | Valid: {stats['valid_days']}")
-            display_last30days(device_name, stats['last30days'])
-            print("-" * 50)
+        yearly_total += total
+        yearly_valid_days += days
 
-    else:
-        print("Invalid selection. Please enter 1 or 2.")
-"""
+    if verbose:
+        print(f"\n📊 {device.upper()} | YEAR {year} | Total: {yearly_total:.2f} m³ | Valid: {yearly_valid_days}")
 
-if __name__ == "__main__":
-    main()
+    return {
+        "device": device,
+        "year": year,
+        "yearly_total": yearly_total,
+        "yearly_valid_days": yearly_valid_days,
+        "monthly_reports": results
+    }
+
+print ('congrats its running ')
