@@ -37,62 +37,69 @@ def get_matched_device_code(name: str) -> str | None:
 @app.route("/nrw/monthly", methods=["GET"])
 def get_monthly_nrw():
     month_str = request.args.get("month")
-    if not month_str:
-        return jsonify({"error": "Missing 'month' parameter (format: YYYY-MM)"}), 400
+    device = request.args.get("device")
+
+    if not month_str or not device:
+        return jsonify({"error": "Missing 'month' or 'device' parameter"}), 400
+
     try:
         year, month = map(int, month_str.split("-"))
     except ValueError:
         return jsonify({"error": "Invalid 'month' format. Use YYYY-MM"}), 400
 
+    if device not in DEVICE_CODES.values():
+        return jsonify({"message": f"Device {device} not recognized"}), 404
+
     billing = get_billed_qty_by_project(year, month)
     flow = fetch_all_reports(year, month)
-    result = {}
 
-    for wtp, info in billing.items():
-        device = get_matched_device_code(wtp)
-        wtp_key = wtp.replace(" WTP", "").lower()
-        total_flow = flow.get(wtp_key, {}).get("total_flow", 0)
-        total_bill = sum(float(loc.get("qty", 0)) for loc in info.get("locations", []))
-        nrw_m3, nrw_pct = calculate_nrw(total_flow, total_bill)
-
-        result[wtp.upper()] = {
-            "billed_complete": f"{info.get('percentage_complete', 0):.2f}%",
-            "total_flow": round(total_flow, 2),
-            "total_bill_qty": round(total_bill, 2),
-            "nrw_m3": round(nrw_m3, 2),
-            "nrw_percent": round(nrw_pct, 2),
-            "device_code": device,
-            "areas": {}
+    # Helper to format response
+    def build_response(name, flow_val, bill_val, billed_pct, device_code):
+        nrw_m3, nrw_pct = calculate_nrw(flow_val, bill_val)
+        if flow_val == 0 and bill_val == 0:
+            return None
+        return {
+            name: {
+                "billed_completed": f"{billed_pct:.2f}%",
+                "total_flow": round(flow_val, 2),
+                "billed_qty": round(bill_val, 2),
+                "nrw_m3": round(nrw_m3, 2),
+                "nrw_percent": round(nrw_pct, 2),
+                "device_code": device_code
+            }
         }
 
+    # WTP device
+    for wtp, info in billing.items():
+        if get_matched_device_code(wtp) == device:
+            wtp_key = wtp.replace(" WTP", "").lower()
+            total_flow = flow.get(wtp_key, {}).get("total_flow", 0)
+            total_bill = sum(float(l.get("qty", 0)) for l in info.get("locations", []))
+            result = build_response(wtp.upper(), total_flow, total_bill, info.get("percentage_complete", 0), device)
+            return jsonify(result or {"message": f"No data found for device {device} in {month_str}"})
+
+    # Area device
+    for wtp, info in billing.items():
         for loc in info.get("locations", []):
-            name = loc.get("location", "Unknown")
-            bill = float(loc.get("qty", 0))
-            area_device = get_matched_device_code(name) or device
-            area_flow = flow.get(name.lower(), {}).get("total_flow", total_flow)
-            area_nrw_m3, area_nrw_pct = calculate_nrw(area_flow, bill)
+            if get_matched_device_code(loc.get("location")) == device:
+                name = loc.get("location", "Unknown")
+                flow_val = flow.get(name.lower(), {}).get("total_flow", 0)
+                bill_val = float(loc.get("qty", 0))
+                result = build_response(name, flow_val, bill_val, loc.get("loc_pctcomplete", 0), device)
+                return jsonify(result or {"message": f"No data found for device {device} in {month_str}"})
 
-            result[wtp.upper()]["areas"][name] = {
-                "billed_completed": f"{loc.get('loc_pctcomplete', 0):.2f}%",
-                "billed_qty": round(bill, 2),
-                "nrw_m3": round(area_nrw_m3, 2),
-                "nrw_percent": round(area_nrw_pct, 2),
-                "total_flow": round(area_flow, 2),
-                "device_code": area_device
-            }
-
-    return jsonify(result)
+    return jsonify({"message": f"No data found for device {device} in {month_str}"})
 
 ######### DAILY  #########
 @app.route("/nrw/daily", methods=["GET"])
 def get_daily_nrw():
-    """Return flattened daily NRW rows, filtered by WTP if given."""
-    date_str = request.args.get("date")     
-    wtp_filter = request.args.get("wtp")
+    date_str = request.args.get("date")
+    device = request.args.get("device")
 
-    if not date_str:
-        return jsonify({"error": "Missing 'date' parameter"}), 400
+    if not date_str or not device:
+        return jsonify({"error": "Missing 'date' or 'device' parameter"}), 400
 
+    # Parse date
     try:
         fmt = "%Y-%m" if len(date_str) == 7 else "%Y-%m-%d"
         req_date = datetime.strptime(date_str, fmt).date()
@@ -103,77 +110,56 @@ def get_daily_nrw():
     next_month = datetime(year + (month == 12), (month % 12) + 1, 1)
     days_in_month = (next_month - datetime(year, month, 1)).days
 
-    billing_data = get_billed_qty_by_project(year, month)
-    flow_data = fetch_all_reports(year, month)
+    if device not in DEVICE_CODES.values():
+        return jsonify({"message": f"Device {device} not recognized"}), 404
 
-    device_flows = {}
-    for wtp_key, fdata in flow_data.items():
-        dev_code = DEVICE_CODES.get(wtp_key)
-        if dev_code:
-            device_flows[dev_code] = fdata.get("last30days", [])
+    billing = get_billed_qty_by_project(year, month)
+    flow = fetch_all_reports(year, month)
 
-    rows = []
-
-    for wtp_name, bill_info in billing_data.items():
-        device = get_matched_device_code(wtp_name)
-        wtp_key = wtp_name.replace(" WTP", "").lower()
-        daily_flows = flow_data.get(wtp_key, {}).get("last30days", [])
-
-        if wtp_filter is not None:
-            if wtp_filter == "" and device:   
-                continue
-            elif wtp_filter and wtp_filter.lower() != wtp_key:
-                continue
-
-        total_billed = sum(loc.get("qty", 0) for loc in bill_info.get("locations", []))
-        billed_per_day = total_billed / days_in_month if days_in_month else 0
-
-        # --- WTP rows (ALL) ---
+    def build_rows(name, billed_total, daily_flows, billed_pct, device_code):
+        billed_per_day = billed_total / days_in_month if days_in_month else 0
+        rows = []
         for day in range(1, days_in_month + 1):
-            flow = daily_flows[day - 1] if day - 1 < len(daily_flows) else 0
-            nrw_m3, nrw_pct = calculate_nrw(flow, billed_per_day)
+            flow_val = daily_flows[day - 1] if day - 1 < len(daily_flows) else 0
+            flow_val = flow_val or 0.0
+            nrw_m3, nrw_pct = calculate_nrw(flow_val, billed_per_day)
             rows.append({
-                "wtp": wtp_name.upper() if device else "",
-                "area": "ALL",
-                "date": f"{year}-{month:02d}-{day:02d}",
-                "daily_flow": round(flow, 2),
-                "billed_est": round(billed_per_day, 2),
-                "nrw_m3": round(nrw_m3, 2),
-                "nrw_percent": round(nrw_pct, 2),
-                "billed_completed": bill_info.get("percentage_complete", 0),
-                "device_code": device
-            })
-
-        # --- Per-location rows ---
-        for loc in bill_info.get("locations", []):
-            loc_name = loc.get("location", "Unknown")
-            loc_billed = (loc.get("qty") or 0) / days_in_month if days_in_month else 0
-
-            loc_device = get_matched_device_code(loc_name)
-
-            if loc_device and loc_device in device_flows:
-                loc_flows = device_flows[loc_device]
-            else:
-                loc_flows = daily_flows  
-
-            for day in range(1, days_in_month + 1):
-                flow = loc_flows[day - 1] if day - 1 < len(loc_flows) else 0
-                flow = flow or 0.0
-                nrw_m3, nrw_pct = calculate_nrw(flow, loc_billed)
-
-                rows.append({
-                    "wtp": wtp_name.upper() if device else "",
-                    "area": loc_name,
+                name: {
                     "date": f"{year}-{month:02d}-{day:02d}",
-                    "daily_flow": round(flow, 2),
-                    "billed_est": round(loc_billed, 2),
+                    "daily_flow": round(flow_val, 2),
+                    "billed_est": round(billed_per_day, 2),
                     "nrw_m3": round(nrw_m3, 2),
                     "nrw_percent": round(nrw_pct, 2),
-                    "billed_completed": loc.get("loc_pctcomplete", 0),
-                    "device_code": loc_device or device
-                })
+                    "billed_completed": billed_pct,
+                    "device_code": device_code
+                }
+            })
+        return rows
 
-    return jsonify(rows)
+    # WTP device
+    for wtp, info in billing.items():
+        if get_matched_device_code(wtp) == device:
+            wtp_key = wtp.replace(" WTP", "").lower()
+            daily_flows = flow.get(wtp_key, {}).get("last30days", [])
+            billed_total = sum(float(l.get("qty", 0)) for l in info.get("locations", []))
+            rows = build_rows(wtp.upper(), billed_total, daily_flows, info.get("percentage_complete", 0), device)
+            if any(list(r.values())[0]["daily_flow"] or list(r.values())[0]["billed_est"] for r in rows):
+                return jsonify(rows)
+            return jsonify({"message": f"No data found for device {device} in {date_str}"})
+
+    # Area device
+    for wtp, info in billing.items():
+        for loc in info.get("locations", []):
+            if get_matched_device_code(loc.get("location")) == device:
+                name = loc.get("location", "Unknown")
+                daily_flows = flow.get(name.lower(), {}).get("last30days", [])
+                billed_total = float(loc.get("qty") or 0)
+                rows = build_rows(name, billed_total, daily_flows, loc.get("loc_pctcomplete", 0), device)
+                if any(list(r.values())[0]["daily_flow"] or list(r.values())[0]["billed_est"] for r in rows):
+                    return jsonify(rows)
+                return jsonify({"message": f"No data found for device {device} in {date_str}"})
+
+    return jsonify({"message": f"No data found for device {device} in {date_str}"})
 
 if __name__ == "__main__":
     app.run(debug=True)
